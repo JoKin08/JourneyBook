@@ -5,9 +5,13 @@ using System.Collections;
 public class ChoiceUIManager : MonoBehaviour
 {
     public GameObject choicePanel;
-    public Transform content;
-    public GameObject textPrefab;
+    public GameObject content;
+    public GameObject ButtonPanel;
     public GameObject optionPrefab;
+    public GameObject DicePanel;
+    public GameObject DiceText;
+    public GameObject DiceResult;
+    public GameObject ImagePanel;
 
     private ChoiceManager choiceManager;
     private Choice currentChoice;
@@ -30,32 +34,38 @@ public class ChoiceUIManager : MonoBehaviour
     {
         choiceManager = FindObjectOfType<ChoiceManager>();
         choicePanel.SetActive(false);
+        ButtonPanel.SetActive(false);
+        DicePanel.SetActive(false);
+        ImagePanel.SetActive(false);
     }
 
     public void StartChoice(string choiceID)
     {
         choicePanel.SetActive(true);
+        ButtonPanel.SetActive(true);
+        ImagePanel.SetActive(true);
         DisplayChoice(choiceID);
     }
 
     void DisplayChoice(string choiceID)
     {
-        // 清空旧内容
-        foreach (Transform child in content) Destroy(child.gameObject);
-
         currentChoice = choiceManager.GetChoice(choiceID);
         if (currentChoice == null) return;
 
+        // 清空选项
+        foreach (Transform child in ButtonPanel.transform)
+        {
+            Destroy(child.gameObject);
+        }
 
         // 显示对话
-        GameObject textObj = Instantiate(textPrefab, content);
-        // textObj.GetComponent<Text>().text = $"{currentChoice.speaker}: {currentChoice.text}";
-        textObj.GetComponent<Text>().text = $"{currentChoice.speaker}: {currentChoice.text}";
+        // content.GetComponent<Text>().text = $"{currentChoice.speaker}: {currentChoice.text}";
+        content.GetComponent<Text>().text += "\n\n" + $"{currentChoice.speaker}: {currentChoice.text}";
 
         // 显示选项
         foreach (var option in currentChoice.options)
         {
-            GameObject optionObj = Instantiate(optionPrefab, content);
+            GameObject optionObj = Instantiate(optionPrefab, ButtonPanel.transform);
             // optionObj.GetComponent<Button>().GetComponentInChildren<TextMeshProUGUI>().text = option.optionText;
             // optionObj.GetComponent<Button>().onClick.AddListener(() => ChooseOption(option.nextChoiceID));
             optionObj.GetComponentInChildren<Text>().text = option.optionText;
@@ -68,11 +78,19 @@ public class ChoiceUIManager : MonoBehaviour
             }
             else if (!string.IsNullOrEmpty(option.skillCheck)) // 需要判定
             {
-                optionObj.GetComponent<Button>().onClick.AddListener(() => RollDice(option));
+                optionObj.GetComponent<Button>().onClick.AddListener(() => {
+                    string selectedText = optionObj.GetComponentInChildren<Text>().text;
+                    content.GetComponent<Text>().text += "\n\nPlayer: " + selectedText;
+                    RollDice(option);
+                    });
             }
             else // 普通选项
             {
-                optionObj.GetComponent<Button>().onClick.AddListener(() => ChooseOption(option.nextChoiceID));
+                optionObj.GetComponent<Button>().onClick.AddListener(() => {
+                    string selectedText = optionObj.GetComponentInChildren<Text>().text;
+                    content.GetComponent<Text>().text += "\n\nPlayer: " + selectedText;
+                    ChooseOption(option.nextChoiceID);
+                    });
             }
         }
     }
@@ -82,6 +100,8 @@ public class ChoiceUIManager : MonoBehaviour
         if (string.IsNullOrEmpty(nextChoiceID))
         {
             choicePanel.SetActive(false);
+            ButtonPanel.SetActive(false);
+            DicePanel.SetActive(false);
             return;
         }
         DisplayChoice(nextChoiceID);
@@ -89,6 +109,7 @@ public class ChoiceUIManager : MonoBehaviour
 
     void RollDice(ChoiceOption option)
     {
+        DicePanel.SetActive(true);
         int diceRoll = Random.Range(1, 7) + Random.Range(1, 7) + Random.Range(1, 7); // 3D6
         int skillValue = 0;
 
@@ -98,15 +119,18 @@ public class ChoiceUIManager : MonoBehaviour
 
         int totalRoll = diceRoll + skillValue;
         Debug.Log($"骰子值: {diceRoll} + 技能({option.skillCheck}) {skillValue} = {totalRoll}");
+        DiceText.GetComponent<Text>().text = $"骰子值: {diceRoll} + 技能({option.skillCheck}) {skillValue} = {totalRoll}";
 
         if (totalRoll >= option.minRollRequirement)
         {
             Debug.Log("判定成功！");
+            DiceResult.GetComponent<Text>().text = "判定成功！";
             ChooseOption(option.nextChoiceID); // 成功
         }
         else
         {
             Debug.Log("判定失败！");
+            DiceResult.GetComponent<Text>().text = "判定失败！";
             ChooseOption(option.failChoiceID); // 失败
         }
     }
@@ -115,6 +139,9 @@ public class ChoiceUIManager : MonoBehaviour
     {
         choicePanel.SetActive(false);
         currentChoice = null;
+        ButtonPanel.SetActive(false);
+        DicePanel.SetActive(false);
+        ImagePanel.SetActive(false);
     }
 
 }
